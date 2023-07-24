@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "baseUrl": ".",
+    "checkJs": false,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@popup/*": ["./src/popup/*"],
+      "@options/*": ["./src/options/*"],
+      "@assets/*": ["./src/assets/*"],
+      "@images/*": ["./src/assets/images/*"],
+      "@styles/*": ["./src/assets/styles/*"],
+      "@data/*": ["./src/data/*"],
+    },
+    "resolveJsonModule": true,
+  },
+  "exclude": ["node_modules", "public", "dist"],
+}

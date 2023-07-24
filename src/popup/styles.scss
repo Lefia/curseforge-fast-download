@@ -1,0 +1,40 @@
+@import '@styles/global.scss';
+
+body {
+  width: 500px;
+  height: 350px;
+}
+
+// Download.jsx
+#download-list {
+  @extend .overflow-auto;
+  @extend .list-group-flush;
+  max-height: 285px;
+
+  .item {
+    @extend .py-2;
+    @extend .px-3;
+    @extend .d-flex;
+    @extend .justify-content-between;
+
+    .item-info {
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      .item-index {
+        width: 30px;
+        display: inline-block;
+        text-align: center;
+        margin-right: 5px;
+      }
+
+      .item-icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 5px;
+      }
+    }
+  }
+}
