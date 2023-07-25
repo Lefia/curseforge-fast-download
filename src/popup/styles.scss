@@ -16,6 +16,7 @@ body {
     @extend .px-3;
     @extend .d-flex;
     @extend .justify-content-between;
+    @extend .rounded-top;
 
     .item-info {
       max-width: 250px;

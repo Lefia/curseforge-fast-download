@@ -26,8 +26,8 @@ const getModSlug = (url) => {
 
 const loadSearchPage = () => {
   const projectCards = document.querySelectorAll('.project-card');
-  chrome.storage.local.get('download-list', (result) => {
-    const downloadList = result['download-list'];
+  chrome.storage.local.get('downloadList', (result) => {
+    const { downloadList = [] } = result;
     projectCards.forEach((projectCard) => {
       const mod = {
         name: projectCard?.querySelector('.name > span')?.innerText || null,
@@ -52,8 +52,8 @@ const loadSearchPage = () => {
 
 const loadModPage = () => {
   const projectHeader = document.querySelector('.project-header');
-  chrome.storage.local.get('download-list', (result) => {
-    const downloadList = result['download-list'];
+  chrome.storage.local.get('downloadList', (result) => {
+    const { downloadList = [] } = result;
     const mod = {
       name: projectHeader?.querySelector('h1')?.innerText || null,
       url: window.location.href,

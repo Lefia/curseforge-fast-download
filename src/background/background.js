@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { getFile } from '../utils/api.js';
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -8,24 +9,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 const download = async (mod) => {
   try {
-    const config = await chrome.storage.sync.get(['game-version', 'mod-loader', 'api-key']);
+    const config = await chrome.storage.sync.get(['gameVersion', 'modLoader', 'apiKey']);
+    const { gameVersion, modLoader, apiKey } = config;
     // Validate configuration
     if (!config) {
       throw new Error('Please configure the extension first');
     }
-    if (!config['api-key']) {
+    if (!apiKey) {
       throw new Error('Please configure the API key first');
     }
-    if (!config['game-version'] || !config['mod-loader']) {
+    if (!gameVersion || !modLoader) {
       throw new Error('Please configure the game version and mod loader first');
     }
     // Download mod
-    const file = await getFile(
-      mod.slug,
-      config['game-version'],
-      config['mod-loader'],
-      config['api-key'],
-    );
+    const file = await getFile(mod.slug, gameVersion, modLoader, apiKey);
     const downloadId = await chrome.downloads.download({
       url: file.downloadUrl,
       filename: file.fileName,
@@ -33,9 +30,9 @@ const download = async (mod) => {
     });
 
     // Save download history
-    const downloadList = (await chrome.storage.local.get('download-list'))['download-list'] || [];
-    downloadList.push({ ...mod, downloadId, status: 'Downloading' });
-    await chrome.storage.local.set({ 'download-list': downloadList });
+    const downloadList = (await chrome.storage.local.get('downloadList')).downloadList || [];
+    downloadList.push({ ...mod, downloadId, status: 'Downloading', id: uuidv4() });
+    await chrome.storage.local.set({ downloadList });
   } catch (error) {
     chrome.notifications.create({
       type: 'basic',
@@ -69,8 +66,8 @@ chrome.downloads.onChanged.addListener((delta) => {
   }
 
   if (status) {
-    chrome.storage.local.get('download-list', (result) => {
-      const downloadList = result['download-list'];
+    chrome.storage.local.get('downloadList', (result) => {
+      const { downloadList } = result;
       const index = downloadList.findIndex((item) => item.downloadId === delta.id);
       if (index !== -1) {
         switch (status) {
@@ -84,7 +81,7 @@ chrome.downloads.onChanged.addListener((delta) => {
           default:
             break;
         }
-        chrome.storage.local.set({ 'download-list': downloadList });
+        chrome.storage.local.set({ downloadList });
         chrome.runtime.sendMessage({ text: 'download-list-updated' });
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           chrome.tabs.sendMessage(tabs[0].id, { text: 'reload' });

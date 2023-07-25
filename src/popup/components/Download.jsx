@@ -2,76 +2,84 @@ import React, { useState, useEffect } from 'react';
 import { ListGroup, Form, InputGroup, Row, Col, Card, Button } from 'react-bootstrap';
 
 export default function Download() {
-  const [downloadList, setDownloadList] = useState([]);
+  const [list, setList] = useState([]);
   const [searchText, setSearchText] = useState('');
-  const [sortType, setSortType] = useState('Lastest');
-  const [sortDirection, setSortDirection] = useState('Asc');
+  const [sort, setSort] = useState({
+    type: 'Lastest',
+    direction: 'Asc',
+  });
 
   useEffect(() => {
-    chrome.storage.local.get(['download-list'], (result) => {
-      setDownloadList(result['download-list']);
+    chrome.storage.local.get(['downloadList'], (result) => {
+      const { downloadList = [] } = result;
+      setList(downloadList);
     });
 
     chrome.runtime.onMessage.addListener((message) => {
       if (message.text === 'download-list-updated') {
-        chrome.storage.local.get(['download-list'], (result) => {
-          setDownloadList(result['download-list']);
+        chrome.storage.local.get(['downloadList'], (result) => {
+          const { downloadList = [] } = result;
+          setList(downloadList);
         });
       }
     });
   }, []);
 
+  const handleAcceptClick = (id) => () => {
+    const updatedList = [...list];
+    const index = updatedList.findIndex((mod) => mod.id === id);
+    const { downloadId } = updatedList[index];
+    chrome.downloads.acceptDanger(downloadId);
+  };
+
+  const handleDeleteClick = (id) => () => {
+    const updatedList = [...list];
+    const index = updatedList.findIndex((mod) => mod.id === id);
+    const { status } = updatedList[index];
+
+    if (status === 'Downloading') {
+      chrome.downloads.cancel(updatedList[index].downloadId);
+    } else {
+      chrome.downloads.removeFile(updatedList[index].downloadId);
+    }
+  };
+
+  const handleSearchTextChange = (e) => {
+    setSearchText(e.target.value);
+  };
+
+  const handleSortTypeChange = (e) => {
+    setSort({ ...sort, type: e.target.value });
+  };
+
+  const handleSortDirectionClick = () => {
+    setSort({ ...sort, direction: sort.direction === 'Asc' ? 'Desc' : 'Asc' });
+  };
+
   const getSortIcon = () => {
-    if (sortDirection === 'Asc') {
+    if (sort.direction === 'Asc') {
       return <i className="fa-solid fa-arrow-up-short-wide"></i>;
     }
     return <i className="fa-solid fa-arrow-up-wide-short"></i>;
   };
 
   const getResultList = () => {
-    const searchList = downloadList.filter((mod) => mod.name.toLowerCase().includes(searchText));
+    const text = searchText.toLowerCase();
+    const searchedList = list.filter((mod) => mod.name.toLowerCase().includes(text));
     let sortedList = [];
-    switch (sortType) {
+    switch (sort.type) {
       case 'Name':
-        sortedList = searchList.sort((a, b) => {
-          if (a.name > b.name) {
-            return 1;
-          }
-          return -1;
-        });
+        sortedList = searchedList.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case 'Lastest':
-        sortedList = searchList;
-        break;
       default:
-        sortedList = searchList;
+        sortedList = searchedList;
     }
 
-    if (sortDirection === 'Desc') {
+    if (sort.direction === 'Desc') {
       sortedList.reverse();
     }
     return sortedList;
-  };
-
-  const handleAccept = (index) => {
-    const updatedList = [...downloadList];
-    chrome.downloads.acceptDanger(updatedList[index].downloadId);
-    updatedList[index].status = 'Downloaded';
-    setDownloadList(updatedList);
-    chrome.storage.local.set({ 'download-list': updatedList });
-  };
-
-  const handleDelete = (index) => {
-    const updatedList = getResultList();
-    if (updatedList[index].status === 'Downloading') {
-      chrome.downloads.cancel(updatedList[index].downloadId);
-    } else {
-      chrome.downloads.removeFile(updatedList[index].downloadId);
-    }
-    updatedList.splice(index, 1);
-    setDownloadList(updatedList);
-
-    chrome.storage.local.set({ 'download-list': updatedList });
   };
 
   return (
@@ -83,20 +91,20 @@ export default function Download() {
               type="text"
               placeholder="Search"
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value.toLowerCase())}
+              onChange={(e) => handleSearchTextChange(e)}
             />
           </Form.Group>
           <Form.Group as={Col} xs="5">
             <InputGroup>
-              <Form.Select value={sortType} onChange={(e) => setSortType(e.target.value)}>
+              <Form.Select
+                name="sortType"
+                value={sort.type}
+                onChange={(e) => handleSortTypeChange(e)}
+              >
                 <option value="Lastest">Lastest</option>
                 <option value="Name">Name</option>
               </Form.Select>
-              <Button
-                variant="outline-secondary"
-                type="button"
-                onClick={() => setSortDirection(sortDirection === 'Asc' ? 'Desc' : 'Asc')}
-              >
+              <Button variant="outline-secondary" type="button" onClick={handleSortDirectionClick}>
                 {getSortIcon()}
               </Button>
             </InputGroup>
@@ -130,7 +138,7 @@ export default function Download() {
                     variant="outline-warning"
                     size="sm"
                     className="me-2"
-                    onClick={() => handleAccept(index)}
+                    onClick={handleAcceptClick(mod.id)}
                   >
                     Accept
                   </Button>
@@ -139,7 +147,7 @@ export default function Download() {
                   type="button"
                   variant="outline-danger"
                   size="sm"
-                  onClick={() => handleDelete(index)}
+                  onClick={handleDeleteClick(mod.id)}
                 >
                   Delete
                 </Button>

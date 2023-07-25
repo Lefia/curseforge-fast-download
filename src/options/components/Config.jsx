@@ -1,64 +1,70 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Col, Row, Form } from 'react-bootstrap';
+import { Button, Col, Row, Form, Toast } from 'react-bootstrap';
 
 import data from '@data/data.json';
 
 export default function Config() {
-  const [version, setVersion] = useState(''); // Game Version
-  const [loader, setLoader] = useState(''); // Mod Loader
-  const [key, setKey] = useState(''); // API key
-  const [isVersionValid, setIsVersionValid] = useState(false);
-  const [isLoaderValid, setIsLoaderValid] = useState(false);
-  const [isKeyValid, setIsKeyValid] = useState(false);
+  const [version, setVersion] = useState({
+    value: '',
+    isValid: false,
+  });
+  const [loader, setLoader] = useState({
+    value: '',
+    isValid: false,
+  });
+  const [key, setKey] = useState({
+    value: '',
+    isValid: false,
+  });
   const [applyCount, setApplyCount] = useState(0);
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    chrome.storage.sync.get(['game-version', 'mod-loader', 'api-key'], (result) => {
-      const gameVersion = result['game-version'] || '';
-      const modLoader = result['mod-loader'] || '';
-      const apiKey = result['api-key'] || '';
-      setVersion(gameVersion);
-      setLoader(modLoader);
-      setKey(apiKey);
+    chrome.storage.sync.get(['gameVersion', 'modLoader', 'apiKey'], (result) => {
+      const { gameVersion = '', modLoader = '', apiKey = '' } = result;
+      setVersion({ ...version, value: gameVersion });
+      setLoader({ ...loader, value: modLoader });
+      setKey({ ...key, value: apiKey });
     });
   }, []);
 
   useEffect(() => {
-    if (isLoaderValid && isVersionValid && isKeyValid && applyCount > 0) {
-      chrome.storage.sync.set({ 'game-version': version });
-      chrome.storage.sync.set({ 'mod-loader': loader });
-      chrome.storage.sync.set({ 'api-key': key });
+    if (loader.isValid && version.isValid && key.isValid && applyCount > 0) {
+      setShow(true);
+      chrome.storage.sync.set({
+        gameVersion: version.value,
+        modLoader: loader.value,
+        apiKey: key.value,
+      });
     }
   }, [applyCount]);
 
   const handleVersionValid = () => {
     if (applyCount > 0) {
-      return isVersionValid ? 'is-valid' : 'is-invalid';
+      return version.isValid ? 'is-valid' : 'is-invalid';
     }
     return '';
   };
 
   const handleLoaderValid = () => {
     if (applyCount > 0) {
-      return isLoaderValid ? 'is-valid' : 'is-invalid';
+      return loader.isValid ? 'is-valid' : 'is-invalid';
     }
     return '';
   };
 
   const handleKeyValid = () => {
     if (applyCount > 0) {
-      return isKeyValid ? 'is-valid' : 'is-invalid';
+      return key.isValid ? 'is-valid' : 'is-invalid';
     }
     return '';
   };
 
-  const apply = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const handleApplyClick = () => {
     setApplyCount(applyCount + 1);
-    setIsVersionValid(data['game-version-list'].includes(version));
-    setIsLoaderValid(loader !== '');
-    setIsKeyValid(key !== '');
+    setVersion({ ...version, isValid: data['game-version-list'].includes(version.value) });
+    setLoader({ ...loader, isValid: loader.value !== '' });
+    setKey({ ...key, isValid: key.value !== '' });
   };
 
   return (
@@ -69,8 +75,8 @@ export default function Config() {
           <Form.Control
             type="text"
             name="game-version"
-            value={version}
-            onChange={(e) => setVersion(e.target.value)}
+            value={version.value}
+            onChange={(e) => setVersion({ ...version, value: e.target.value })}
             className={`${handleVersionValid()}`}
           />
           <Form.Control.Feedback type="invalid">
@@ -80,8 +86,8 @@ export default function Config() {
         <Form.Group as={Col} xs="6" controlId="mod-loader">
           <Form.Label>Mod Loader</Form.Label>
           <Form.Select
-            value={loader}
-            onChange={(e) => setLoader(e.target.value)}
+            value={loader.value}
+            onChange={(e) => setLoader({ ...loader, value: e.target.value })}
             className={`${handleLoaderValid()}`}
           >
             <option value="" disabled>
@@ -100,16 +106,26 @@ export default function Config() {
           <Form.Control
             type="text"
             name="api-key"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
+            value={key.value}
+            onChange={(e) => setKey({ ...key, value: e.target.value })}
             className={`${handleKeyValid()}`}
           />
           <Form.Control.Feedback type="invalid">Please input a valid API.</Form.Control.Feedback>
         </Form.Group>
       </Row>
-      <Button variant="primary" onClick={apply}>
+      <Button name="apply" variant="primary" type="button" onClick={handleApplyClick}>
         Apply
       </Button>
+      <Toast
+        className="position-absolute start-50 translate-middle"
+        style={{ width: '165px' }}
+        onClose={() => setShow(false)}
+        show={show}
+        delay={1200}
+        autohide
+      >
+        <Toast.Body>Applied Successfully!</Toast.Body>
+      </Toast>
     </Form>
   );
 }
